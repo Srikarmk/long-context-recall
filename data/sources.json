@@ -1,0 +1,9 @@
+{
+ "wikitext2_train": {
+  "repo": "Salesforce/wikitext",
+  "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+  "path": "wikitext-2-raw-v1/train-00000-of-00001.parquet",
+  "bytes": 6357543,
+  "sha256": "e83889baabc497075506f91975be5fac0d45c5290b6b20582c8cd1e853d0c9f7"
+ }
+}

@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+type: software
+title: "Long-context recall: how well do LLMs use long context?"
+abstract: "A measurement study of long-context use with local open models: recall of invented facts planted in WikiText filler, varied one factor at a time by document length (1k to 16k tokens), position (start to end), near-miss distractors and two-hop composition, with fact-absent and closed-book controls and an A/A noise floor, every comparison paired by item."
+authors:
+  - family-names: Manda
+    given-names: Kameswara Sai Srikar
+date-released: "2026-10-23"
+license: MIT
+keywords: [llm, long context, lost in the middle, needle in a haystack, evaluation, distractors, multi-hop]
