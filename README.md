@@ -15,31 +15,51 @@ regenerates exactly. Pre-registered predictions, with dated addenda: [HYPOTHESES
 
 ## Findings
 
-The full run has not been started yet. The design, the pilot and the exact grid are fixed below and in
-[HYPOTHESES.md](HYPOTHESES.md); [RUN.md](RUN.md) has the command and the expected duration. Pilot
-numbers (on 6 pilot items that are excluded from every reported result) are in
-[reports/pilot.md](reports/pilot.md).
+Full run: 6,140 calls on 40 main items (16 at 16k for the depth grid, 20 for two-hop at 16k), four local
+models at temperature 0. Twelve of the thirteen pre-registered predictions held; the full scoring is in
+[reports/results.md](reports/results.md#9-pre-registered-predictions). Intervals are 95% bootstraps over
+items.
 
-What the pilot showed, on far too few items to estimate anything (804 calls; details in
-[HYPOTHESES.md](HYPOTHESES.md)):
+![Recall with near-miss distractors by depth and length](reports/figures/depth_by_length_distract.png)
 
-- **One fact alone is easy.** With nothing like it nearby, `qwen3:8b` and `gemma3:12b` found the fact
-  at every length from 1k to 32k tokens and every depth; `llama3.1:8b` missed a few, by replying "not
-  stated" with the fact near the end.
-- **Near misses are not.** With three similar facts about similar invented entities in the document,
-  recall at 4k fell to 77% (`qwen3:8b`), 37% (`llama3.1:8b`) and 60% (`gemma3:12b`, 2 items), and
-  mostly further with length; the wrong replies named a distractor's person, not a made-up one.
-- **Missing facts get filled in.** With the key fact left out, every model said "not stated" when
-  there were no distractors, but with them they often named a distractor's person instead.
-- **Two hops apart.** Two facts next to each other were combined every time. With them at 10% and 90%
-  of a 4k document, accuracy dropped for every main model in at least one of the two orders, and at
-  16k `llama3.1:8b` gave up ("not stated") on every far pair.
-- **The wording mattered.** The first pilot asked for "a name of a few words"; `llama3.1:8b` then
-  answered the two-hop town question with the person's name on 7 of 12 far pairs. Asking for "the
-  answer, in a few words" removed that (0 of 12), so the template was changed before the second pilot.
-- `qwen3:30b-a3b` with thinking found the fact on every pilot call where it was present (1 to 3 items
-  per stage), though with the fact left out it too named a distractor (2 of 3 items), at about
-  five times the time per call of `qwen3:8b` at 1k and about the same at 16k (prefill dominates there).
+- **One fact on its own is found at any length.** With nothing like it nearby, every main model
+  answered 98 to 100% of items at every length from 1k to 16k tokens and at every depth. Length alone
+  cost nothing measurable (16k minus 1k: +0.0 pp for all three).
+- **Three similar facts nearby are what break it.** Each distractor is about an invented entity whose
+  name differs from the key one by a word or a few letters, with a different person. At 4k they cut
+  recall by 18.5 pp (`qwen3:8b`, to 80%), 42.5 pp (`llama3.1:8b`, to 57%) and 32.5 pp (`gemma3:12b`, to
+  68%). With distractors, length then hurts: at 16k recall was 69%, 38% and 52%.
+- **Position matters only once there is something to confuse.** With the fact alone, no depth was worse
+  than any other. With distractors, `gemma3:12b` lost the middle (at 8k: 95% at the start, 25% in the
+  middle; at 16k, 12% in the middle) and `qwen3:8b` the interior (75% depth worst at every length).
+  `llama3.1:8b` instead favoured the start over the end (+27.5 pp, pooled over 1k to 8k).
+- **Wrong answers name a distractor, usually an earlier one.** Wrong replies almost never invented a
+  name: they named a distractor's person. When they did, it was one placed before the key fact 87%
+  (`qwen3:8b`) and 82% (`llama3.1:8b`) of the time, against 63 to 65% by chance; `gemma3:12b` was close
+  to chance (63% against 59%).
+- **A missing fact gets filled in from a near miss.** With the key fact left out and nothing similar
+  nearby, the models replied "not stated" on 98 to 100% of items. With the near misses present,
+  `gemma3:12b` named a distractor's person on 98% of items, `qwen3:8b` on 57% and `llama3.1:8b` on 50%.
+- **Two facts far apart are combined less often, and much less at 16k.** Next to each other, the two
+  facts of a two-hop question ("where was the designer of X born?") were combined 92 to 100% of the
+  time. With one at 10% and the other at 90% of a 16k document, `llama3.1:8b` managed 30% and 10% (the
+  two orders), `gemma3:12b` 35% and 20%, `qwen3:8b` 80% and 60%, though each model answered the second
+  hop on its own at 75 to 100%. The predicted order effect (birthplace first is harder) did not hold.
+- **The thinking model was not fooled.** `qwen3:30b-a3b` with thinking (on 20 items at 4k) answered 97%
+  with distractors, 21.0 pp above `qwen3:8b` on the same items [+8.0, +35.0], named a distractor on 1 of
+  20 items with the fact left out, and combined far-apart facts every time. That is confounded with size
+  and thinking, and it took about 7 seconds a call against 3.
+- **The noise floor is close to zero.** The identical prompt sent twice flipped 0 of 200 times for the
+  two 8B models and 1 of 200 for `gemma3:12b`. Closed-book, no model answered any question correctly,
+  but `gemma3:12b` named a person instead of saying "not stated" on 68 to 82% of them.
+
+**What this means in practice.** A single-needle test says these models read 16k tokens reliably. They
+do, until the document holds other facts of the same shape, which real documents (contracts, logs,
+tickets, product catalogues) usually do. A long-context check that matters plants near misses, leaves
+the fact out on some items, and asks questions that need two facts far apart.
+
+The answer checker has not yet been checked by hand: the sample in `handcheck/sample.csv` is waiting
+for labels (see [Hand-check](#hand-check)).
 
 ## Design
 
@@ -202,8 +222,8 @@ src/lcrecall/  config (settings, grid), data (fetch, filler paragraphs), facts (
 tests/         checker, documents and placement, items, cache and token check, bootstrap, analysis
 data/          items.jsonl (the items) and sources.json (file, revision, sha256)
 results/       rows/<model>.jsonl (one row per call) and models.json (digests, settings)
-reports/       pilot.md and pilot_figures/ now; results.md and figures/ after the full run
-handcheck/     pilot_sample.csv now; sample.csv after the full run (label column empty), *parser_key.csv
+reports/       results.md and figures/ (full run), pilot.md and pilot_figures/
+handcheck/     sample.csv and pilot_sample.csv (label column empty), *parser_key.csv
 cache/         llm.sqlite: every model call
 ```
 
